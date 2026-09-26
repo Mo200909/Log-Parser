@@ -1,39 +1,37 @@
-# Port Scanner
+# IP Traffic Anomaly Detector
 
-A multi-threaded Python port scanner. You give it a host and a port range, and it tells you which ports are open and what's likely running on them.
+Parses IP addresses from a log file, counts frequency, and flags IPs above a threshold as anomalous.
 
-## How it works
+## What it does
 
-- Uses 10 threads pulling from a shared, thread-safe queue so ports get scanned in parallel instead of one at a time
-- Resolves the hostname to an IP first
-- Checks each port with a raw socket connection (1-second timeout)
-- Matches open ports against a dictionary of common services (FTP, SSH, HTTP, DNS, MySQL, etc.)
-- Prints a summary of everything it found once all threads finish
+1. **Reads log file** — extracts all IPv4 addresses via regex from a text log.
+2. **Counts occurrences** — tallies frequency per IP using `collections.Counter`.
+3. **Writes CSV** — outputs `output.csv` with columns `IP, Frequency`.
+4. **Flags anomalies** — any IP exceeding `anomaly_threshold` (default 20) is printed and saved to `anomaly_report.csv`.
 
-## Run it
+## Usage
 
+```bash
+python script.py
 ```
-python port_scanner.py
-```
 
-Then enter a target host and a port range like `1-1000` when prompted.
+Requires a file named `log(anomaly).txt` in the same directory (hardcoded in `__main__`).
 
-## Example runs
+## Output files
 
-Scanned `8.8.8.8` (Google DNS) — port 53 came back open and correctly identified as DNS.
+| File | Contents |
+|---|---|
+| `output.csv` | Every unique IP found, with hit count |
+| `anomaly_report.csv` | Only IPs above threshold (created only if anomalies exist) |
 
-Scanned `127.0.0.1` (localhost) — port 135 came back open, labeled "Unknown" since it's not in the service dictionary.
+## Config
 
-## Known services it recognizes
+- `anomaly_threshold` (default `20`) — change in the `analyze_traffic()` call.
+- Input filename is hardcoded (`log(anomaly).txt`) — no CLI args.
 
-FTP, SSH, Telnet, SMTP, DNS, HTTP, IMAP, HTTPS, MySQL, PostgreSQL, VNC, HTTP-Alt, HTTPS-Alt
+## Known gaps
 
-## Built with
-
-- Python 3
-- `socket` for the actual connections
-- `threading` + `queue` for running scans in parallel
-
-## Author
-
-Mofolorunsho Adeleke
+- Regex matches any 4-dot-separated number pattern, including invalid IPs (e.g. `999.999.999.999`) — no validation.
+- `reader()` prints the entire log to stdout — noisy for large files, no way to suppress.
+- Input filename hardcoded, not parameterized via CLI/argparse.
+- No logging/timestamp on anomaly detections — just raw frequency count, no time-window analysis (a burst over 1 min vs spread over a week look identical).
